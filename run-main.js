@@ -1,4 +1,4 @@
-const {scrapeAndStore} = require('./index');
+const {scrapeAndStore} = require('./index.js');
 
 (async () => {
   try {

@@ -84,7 +84,6 @@ async function scrapeTopics(questionLink) {
         await client.connect();
         console.log("Connected to MongoDB------------------------------------");
         const db = client.db(DB_NAME);
-        const collection = db.collection(COLLECTION_NAME);
         for (let i = 0; i < contestUrls.length; i++) {
             console.log(`Scraping ${contestUrls[i].name} (${i + 1}/${contestUrls.length})`);
 
@@ -98,9 +97,26 @@ async function scrapeTopics(questionLink) {
                 }
             }));
             console.log("Final Scraped Data:", contestQuestions);
-            if (contestQuestions.length > 0) {
-                const result = await collection.insertMany(contestQuestions);
-                console.log(`Inserted ${result.insertedCount} documents`);
+            for (const question of contestQuestions) {
+                // Add contest metadata to each problem
+                const documentToInsert = {
+                    contestName: contestUrls[i].name,
+                    contestType: contestUrls[i].type,
+                    title: question.title,
+                    link: question.link,
+                    points: question.points,
+                    topics: question.topics
+                };
+                console.log(`Preparing to insert: ${documentToInsert.title} with points: ${documentToInsert.points}`);
+                console.log(documentToInsert);
+
+                const targetCollection = db.collection(`${COLLECTION_NAME}${question.points || 0}`);
+                try {
+                    await targetCollection.insertOne(documentToInsert);
+                    console.log(`Inserted -> ${documentToInsert.title} into ${COLLECTION_NAME}${documentToInsert.points || 0}`);
+                } catch (err) {
+                    console.error(`Failed to insert ${documentToInsert.title}:`, err);
+                }
             }
             await new Promise(resolve => setTimeout(resolve, randomDelay(5000, 15000))); 
         }

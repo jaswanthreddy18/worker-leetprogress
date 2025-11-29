@@ -2,7 +2,8 @@ name: Run scrapeAndStore on schedule
 
 on:
   schedule:
-    - cron: "28 10 * * 6"
+    # Every Thursday at 9:30 PM IST (16:00 UTC)
+    - cron: "0 16 * * 4"
   workflow_dispatch: # lets you run it manually from Actions tab
 
 jobs:

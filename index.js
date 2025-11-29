@@ -67,7 +67,7 @@ async function scrapeTopics(questionLink) {
     return topics;
 }
 
-export async function scrapeAndStore() {
+ async function scrapeAndStore() {
     console.log("Starting the full scraping process...");
 
     let contestUrls = [];
@@ -112,4 +112,4 @@ export async function scrapeAndStore() {
     }
 }
 
-scrapeAndStore();
+module.exports = { scrapeAndStore };

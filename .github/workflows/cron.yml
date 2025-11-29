@@ -1,0 +1,37 @@
+name: Run scrapeAndStore on schedule
+
+on:
+  schedule:
+    # Every Thursday at 9:30 PM IST (16:00 UTC)
+    - cron: "0 16 * * 4"
+  workflow_dispatch: # lets you run it manually from Actions tab
+
+jobs:
+  run-main:
+    runs-on: ubuntu-latest
+
+    env:
+      MONGO_URI: ${{ secrets.MONGO_URI }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      COLLECTION_NAME: ${{ secrets.COLLECTION_NAME }}
+      NODE_ENV: production
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Run scrapeAndStore()
+        run: node run-main.js

@@ -191,9 +191,11 @@ async function scrapeAndStore() {
                 try {
                     await targetCollection.insertOne(documentToInsert);
                     console.log(`Inserted -> ${documentToInsert.title} into ${COLLECTION_NAME}${documentToInsert.points || 0}`);
+
                 } catch (err) {
                     console.error(`Failed to insert ${documentToInsert.title}:`, err);
                 }
+                await new Promise((resolve) => setTimeout(resolve, randomDelay(5000, 10000)));
             }
       } catch (contestErr) {
         console.error(`Error scraping ${contest.name} (${contest.url}):`, contestErr);
@@ -209,6 +211,4 @@ async function scrapeAndStore() {
   }
 }
 
-
-scrapeAndStore();
 module.exports = { scrapeAndStore };

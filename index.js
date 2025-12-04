@@ -67,65 +67,132 @@ async function scrapeTopics(questionLink) {
     return topics;
 }
 
- async function scrapeAndStore() {
-    console.log("Starting the full scraping process...");
+async function scrapeAndStore() {
+  console.log("Starting the full scraping process (fetch previous weekend)...");
 
-    let contestUrls = [];
-    for (let i = 470; i <= 477; i++) {
-        contestUrls.push({ url: `https://leetcode.com/contest/weekly-contest-${i}/`, name: `Weekly Contest ${i}`, type: "Weekly" });
-    }
-    for (let i = 160; i <= 170; i++) {
-        contestUrls.push({ url: `https://leetcode.com/contest/biweekly-contest-${i}/`, name: `Biweekly Contest ${i}`, type: "Biweekly" });
-    }
+  const WEEKLY_BASE_CONTEST = 478;
+  const WEEKLY_BASE_DATE = new Date("2025-11-30T02:30:00Z"); 
 
-    const client = new MongoClient(MONGO_URI);
+  const BIWEEKLY_BASE_CONTEST = 171;
+  const BIWEEKLY_BASE_DATE = new Date("2025-11-22T14:30:00Z"); 
 
-    try {
-        await client.connect();
-        console.log("Connected to MongoDB------------------------------------");
-        const db = client.db(DB_NAME);
-        for (let i = 0; i < contestUrls.length; i++) {
-            console.log(`Scraping ${contestUrls[i].name} (${i + 1}/${contestUrls.length})`);
 
-            const contestQuestions = await scrapeContest(contestUrls[i].url);
+  function prevOrSameWeekdayDate(fromDate, targetWeekday) {
+    const d = new Date(fromDate.getTime()); 
+    const curr = d.getUTCDay(); 
+    const delta = (curr - targetWeekday + 7) % 7; 
+    d.setUTCDate(d.getUTCDate() - delta);
+    return d;
+  }
 
-            await Promise.all(contestQuestions.map(async (question) => {
-                if (question.link) {
-                    question.topics = await scrapeTopics(question.link);
-                } else {
-                    question.topics = [];
-                }
-            }));
-            console.log("Final Scraped Data:", contestQuestions);
-            for (const question of contestQuestions) {
-                // Add contest metadata to each problem
-                const documentToInsert = {
-                    contestName: contestUrls[i].name,
-                    contestType: contestUrls[i].type,
-                    title: question.title,
-                    link: question.link,
-                    points: question.points,
-                    topics: question.topics
-                };
-                console.log(`Preparing to insert: ${documentToInsert.title} with points: ${documentToInsert.points}`);
-                console.log(documentToInsert);
 
-                const targetCollection = db.collection(`${COLLECTION_NAME}${question.points || 0}`);
-                try {
-                    await targetCollection.insertOne(documentToInsert);
-                    console.log(`Inserted -> ${documentToInsert.title} into ${COLLECTION_NAME}${documentToInsert.points || 0}`);
-                } catch (err) {
-                    console.error(`Failed to insert ${documentToInsert.title}:`, err);
-                }
-            }
-            await new Promise(resolve => setTimeout(resolve, randomDelay(5000, 15000))); 
+  // date time in UTC
+
+
+  function weeksBetween(startDate, targetDate) {
+    const diffMs = targetDate.getTime() - startDate.getTime();
+    return Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000));
+  }
+
+  const now = new Date(); 
+    
+  const prevSunday = prevOrSameWeekdayDate(now, 0);   
+
+
+  const weeklyWeeks = weeksBetween(WEEKLY_BASE_DATE, prevSunday);
+  const weeklyNum = WEEKLY_BASE_CONTEST + Math.max(0, weeklyWeeks);
+
+  const biWeeks = weeksBetween(BIWEEKLY_BASE_DATE, prevSaturday);
+  const isBiweeklyPrevWeekend = biWeeks >= 0 && biWeeks % 2 === 0;
+  const biNum = isBiweeklyPrevWeekend
+    ? BIWEEKLY_BASE_CONTEST + Math.floor(biWeeks / 2)
+    : null;
+
+  const contestUrls = [];
+
+  console.log("Run time (UTC):", now.toISOString());
+  console.log("Previous Saturday (UTC):", prevSaturday.toISOString());
+  console.log("Previous Sunday   (UTC):", prevSunday.toISOString());
+  console.log("Computed weekly contest (from prev Sunday):", weeklyNum);
+
+  contestUrls.push({
+    url: `https://leetcode.com/contest/weekly-contest-${weeklyNum}/`,
+    name: `Weekly Contest ${weeklyNum}`,
+    type: "Weekly",
+  });
+
+  if (isBiweeklyPrevWeekend) {
+    console.log("Previous Saturday WAS a Biweekly contest →", biNum);
+    contestUrls.push({
+      url: `https://leetcode.com/contest/biweekly-contest-${biNum}/`,
+      name: `Biweekly Contest ${biNum}`,
+      type: "Biweekly",
+    });
+  } else {
+    console.log("Previous Saturday was NOT a biweekly contest → skipping biweekly.");
+  }
+
+  console.log("Contests to scrape (previous weekend):", contestUrls);
+
+  const client = new MongoClient(MONGO_URI);
+
+  try {
+    await client.connect();
+    console.log("Connected to MongoDB------------------------------------");
+    const db = client.db(DB_NAME);
+    const collection = db.collection(COLLECTION_NAME);
+
+    for (let i = 0; i < contestUrls.length; i++) {
+      const contest = contestUrls[i];
+      console.log(`Scraping ${contest.name} (${i + 1}/${contestUrls.length}) — ${contest.url}`);
+
+      try {
+        const contestQuestions = await scrapeContest(contest.url);
+
+        if (!Array.isArray(contestQuestions)) {
+          console.warn("scrapeContest returned non-array for", contest.url);
+          continue;
         }
-    } catch (error) {
-        console.error("Error:", error);
-    } finally {
-        await client.close();
-        console.log("MongoDB connection closed---------------------------------------");
+
+        await Promise.all(
+          contestQuestions.map(async (question) => {
+            if (question.link) {
+              try {
+                question.topics = await scrapeTopics(question.link);
+              } catch (err) {
+                console.warn("Failed to scrape topics for", question.link, err);
+                question.topics = [];
+              }
+            } else {
+              question.topics = [];
+            }
+            question._scrapedFrom = contest.name;
+            question._scrapedAt = new Date().toISOString();
+          })
+        );
+
+        console.log(`Final Scraped Data length for ${contest.name}:`, contestQuestions.length);
+
+        if (contestQuestions.length > 0) {
+          const result = await collection.insertMany(contestQuestions);
+          console.log(`Inserted ${result.insertedCount} documents for ${contest.name}`);
+        } else {
+          console.log("No questions scraped for this contest, skipping insert.");
+        }
+      } catch (contestErr) {
+        console.error(`Error scraping ${contest.name} (${contest.url}):`, contestErr);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, randomDelay(5000, 15000)));
     }
+  } catch (err) {
+    console.error("Error in scrapeAndStore outer try:", err);
+  } finally {
+    await client.close();
+    console.log("MongoDB connection closed---------------------------------------");
+  }
 }
+
+
 
 module.exports = { scrapeAndStore };

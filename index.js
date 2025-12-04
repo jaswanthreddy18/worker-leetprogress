@@ -103,7 +103,7 @@ async function scrapeAndStore() {
   const weeklyNum = WEEKLY_BASE_CONTEST + Math.max(0, weeklyWeeks);
 
   const biWeeks = weeksBetween(BIWEEKLY_BASE_DATE, prevSaturday);
-  const isBiweeklyPrevWeekend = biWeeks >= 0 && biWeeks % 2 === 0;
+  const isBiweeklyPrevWeekend = biWeeks >= 0 && biWeeks % 2 !== 0;
   const biNum = isBiweeklyPrevWeekend
     ? BIWEEKLY_BASE_CONTEST + Math.floor(biWeeks / 2)
     : null;
@@ -141,7 +141,7 @@ async function scrapeAndStore() {
     console.log("Connected to MongoDB------------------------------------");
     const db = client.db(DB_NAME);
     const collection = db.collection(COLLECTION_NAME);
-
+    
     for (let i = 0; i < contestUrls.length; i++) {
       const contest = contestUrls[i];
       console.log(`Scraping ${contest.name} (${i + 1}/${contestUrls.length}) — ${contest.url}`);
@@ -173,12 +173,28 @@ async function scrapeAndStore() {
 
         console.log(`Final Scraped Data length for ${contest.name}:`, contestQuestions.length);
 
-        if (contestQuestions.length > 0) {
-          const result = await collection.insertMany(contestQuestions);
-          console.log(`Inserted ${result.insertedCount} documents for ${contest.name}`);
-        } else {
-          console.log("No questions scraped for this contest, skipping insert.");
-        }
+        console.log("Final Scraped Data:", contestQuestions);
+            for (const question of contestQuestions) {
+                // Add contest metadata to each problem
+                const documentToInsert = {
+                    contestName: contestUrls[i].name,
+                    contestType: contestUrls[i].type,
+                    title: question.title,
+                    link: question.link,
+                    points: question.points,
+                    topics: question.topics
+                };
+                console.log(`Preparing to insert: ${documentToInsert.title} with points: ${documentToInsert.points}`);
+                console.log(documentToInsert);
+
+                const targetCollection = db.collection(`${COLLECTION_NAME}${question.points || 0}`);
+                try {
+                    await targetCollection.insertOne(documentToInsert);
+                    console.log(`Inserted -> ${documentToInsert.title} into ${COLLECTION_NAME}${documentToInsert.points || 0}`);
+                } catch (err) {
+                    console.error(`Failed to insert ${documentToInsert.title}:`, err);
+                }
+            }
       } catch (contestErr) {
         console.error(`Error scraping ${contest.name} (${contest.url}):`, contestErr);
       }
@@ -194,5 +210,5 @@ async function scrapeAndStore() {
 }
 
 
-
+scrapeAndStore();
 module.exports = { scrapeAndStore };

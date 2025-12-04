@@ -86,7 +86,6 @@ async function scrapeAndStore() {
   }
 
 
-  // date time in UTC
 
 
   function weeksBetween(startDate, targetDate) {
@@ -96,7 +95,8 @@ async function scrapeAndStore() {
 
   const now = new Date(); 
     
-  const prevSunday = prevOrSameWeekdayDate(now, 0);   
+  const prevSunday = prevOrSameWeekdayDate(now, 0); 
+  const prevSaturday = prevOrSameWeekdayDate(now, 6);  
 
 
   const weeklyWeeks = weeksBetween(WEEKLY_BASE_DATE, prevSunday);

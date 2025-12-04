@@ -195,7 +195,7 @@ async function scrapeAndStore() {
                 } catch (err) {
                     console.error(`Failed to insert ${documentToInsert.title}:`, err);
                 }
-                await new Promise((resolve) => setTimeout(resolve, randomDelay(5000, 10000)));
+                await new Promise((resolve) => setTimeout(resolve, randomDelay(2000, 5000)));
             }
       } catch (contestErr) {
         console.error(`Error scraping ${contest.name} (${contest.url}):`, contestErr);

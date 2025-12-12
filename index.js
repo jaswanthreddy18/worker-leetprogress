@@ -103,7 +103,7 @@ async function scrapeAndStore() {
   const weeklyNum = WEEKLY_BASE_CONTEST + Math.max(0, weeklyWeeks);
 
   const biWeeks = weeksBetween(BIWEEKLY_BASE_DATE, prevSaturday);
-  const isBiweeklyPrevWeekend = biWeeks >= 0 && biWeeks % 2 === 0;
+  const isBiweeklyPrevWeekend = biWeeks >= 0 && biWeeks % 2 !== 0;
   const biNum = isBiweeklyPrevWeekend
     ? BIWEEKLY_BASE_CONTEST + Math.floor(biWeeks / 2)
     : null;

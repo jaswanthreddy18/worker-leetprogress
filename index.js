@@ -73,7 +73,7 @@ async function scrapeAndStore() {
   const WEEKLY_BASE_CONTEST = 478;
   const WEEKLY_BASE_DATE = new Date("2025-11-30T02:30:00Z"); 
 
-  const BIWEEKLY_BASE_CONTEST = 171;
+  const BIWEEKLY_BASE_CONTEST = 170;
   const BIWEEKLY_BASE_DATE = new Date("2025-11-22T14:30:00Z"); 
 
 
@@ -103,7 +103,7 @@ async function scrapeAndStore() {
   const weeklyNum = WEEKLY_BASE_CONTEST + Math.max(0, weeklyWeeks);
 
   const biWeeks = weeksBetween(BIWEEKLY_BASE_DATE, prevSaturday);
-  const isBiweeklyPrevWeekend = biWeeks >= 0 && biWeeks % 2 !== 0;
+  const isBiweeklyPrevWeekend = biWeeks >= 0 && biWeeks % 2 === 0;
   const biNum = isBiweeklyPrevWeekend
     ? BIWEEKLY_BASE_CONTEST + Math.floor(biWeeks / 2)
     : null;

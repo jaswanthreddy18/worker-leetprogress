@@ -96,16 +96,25 @@ async function scrapeAndStore() {
   const now = new Date(); 
     
   const prevSunday = prevOrSameWeekdayDate(now, 0); 
-  const prevSaturday = prevOrSameWeekdayDate(now, 6);  
+  const prevSaturday = prevOrSameWeekdayDate(now, 6);
+  const prevSaturdayAtContestTime = new Date(Date.UTC(
+    prevSaturday.getUTCFullYear(),
+    prevSaturday.getUTCMonth(),
+    prevSaturday.getUTCDate(),
+    BIWEEKLY_BASE_DATE.getUTCHours(),
+    BIWEEKLY_BASE_DATE.getUTCMinutes(),
+    BIWEEKLY_BASE_DATE.getUTCSeconds()
+  ));
 
 
   const weeklyWeeks = weeksBetween(WEEKLY_BASE_DATE, prevSunday);
   const weeklyNum = WEEKLY_BASE_CONTEST + Math.max(0, weeklyWeeks);
 
-  const biWeeks = weeksBetween(BIWEEKLY_BASE_DATE, prevSaturday);
-  const isBiweeklyPrevWeekend = biWeeks >= 0 && biWeeks % 2 !== 0;
+const biWeeks = weeksBetween(BIWEEKLY_BASE_DATE, prevSaturdayAtContestTime);
+console.log("biWeeks:", biWeeks);
+  const isBiweeklyPrevWeekend = biWeeks >= 0 && biWeeks % 2 === 0;
   const biNum = isBiweeklyPrevWeekend
-    ? BIWEEKLY_BASE_CONTEST + Math.floor(biWeeks / 2)
+    ? BIWEEKLY_BASE_CONTEST + (biWeeks / 2)
     : null;
 
   const contestUrls = [];
